@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Letter · To Say Something</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400&family=Herr+Von+Muellerhoff&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Layout ─────────────────────────────────────── */
+    .messages-wrap {
+      padding-bottom: 5rem;
+    }
+
+    .envelope-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 80px);
+      padding: 6rem 1.5rem 4rem;
+      position: relative;
+    }
+
+    /* ── Hint label ─────────────────────────────────── */
+    .open-hint {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      color: var(--gold-dark);
+      margin-bottom: 2rem;
+      opacity: 1;
+      transition: opacity .4s;
+      animation: fade-up .7s .4s both;
+    }
+    .open-hint.hidden { opacity: 0; pointer-events: none; }
+
+    /* ── Envelope shell ─────────────────────────────── */
+    .envelope-scene {
+      position: relative;
+      width: 380px;
+      cursor: pointer;
+      animation: fade-up .8s .1s both;
+      /* Keep scene tall enough to hold letter peeking above */
+      padding-top: 160px;
+    }
+
+    /* The envelope body */
+    .envelope {
+      position: relative;
+      width: 380px;
+      height: 250px;
+      border-radius: 4px 4px 6px 6px;
+      background: linear-gradient(160deg, #fdf6e3 0%, #f5e9cc 100%);
+      border: 1px solid rgba(201,168,76,.45);
+      box-shadow: var(--shadow-md);
+      overflow: visible;
+    }
+
+    /* ── Back fold triangles (bottom-left / bottom-right) ── */
+    .envelope::before,
+    .envelope::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      width: 0;
+      height: 0;
+      z-index: 1;
+    }
+    /* bottom-left triangle */
+    .envelope::before {
+      left: 0;
+      border-style: solid;
+      border-width: 0 0 125px 190px;
+      border-color: transparent transparent rgba(224,209,172,.9) transparent;
+    }
+    /* bottom-right triangle */
+    .envelope::after {
+      right: 0;
+      border-style: solid;
+      border-width: 125px 0 0 190px;
+      border-color: transparent transparent transparent rgba(214,198,158,.85);
+    }
+
+    /* Bottom-center diamond seam */
+    .env-seam {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 1px; height: 125px;
+      background: rgba(201,168,76,.25);
+      z-index: 2;
+    }
+
+    /* ── Wax seal ───────────────────────────────────── */
+    .wax-seal {
+      position: absolute;
+      bottom: -18px; left: 50%;
+      transform: translateX(-50%);
+      width: 46px; height: 46px;
+      background: radial-gradient(circle at 38% 36%, #e05555, var(--red) 55%, #8b1a1a);
+      border-radius: 50%;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 10px rgba(192,57,43,.4), inset 0 1px 3px rgba(255,255,255,.2);
+      transition: transform .3s, opacity .5s;
+      font-size: .85rem;
+      color: rgba(255,255,255,.85);
+      font-family: 'Herr Von Muellerhoff', cursive;
+      line-height: 1;
+    }
+    .envelope-scene.opened .wax-seal {
+      opacity: 0;
+      transform: translateX(-50%) scale(.6);
+      pointer-events: none;
+    }
+
+    /* ── Flap ───────────────────────────────────────── */
+    .env-flap-wrap {
+      position: absolute;
+      top: 0; left: 0;
+      width: 380px;
+      height: 130px; /* half-ish */
+      overflow: visible;
+      transform-origin: top center;
+      transform-style: preserve-3d;
+      transition: transform .65s cubic-bezier(.4,0,.2,1);
+      z-index: 20;
+    }
+
+    .env-flap {
+      width: 0;
+      height: 0;
+      border-style: solid;
+      /* Triangle pointing down — forms the flap */
+      border-width: 130px 190px 0 190px;
+      border-color: rgba(245,233,201,.95) transparent transparent transparent;
+      filter: drop-shadow(0 2px 4px rgba(107,93,79,.12));
+    }
+
+    /* Flap inner shadow line */
+    .env-flap::after {
+      content: '';
+      position: absolute;
+      top: -128px; left: -188px;
+      width: 376px; height: 1px;
+      background: rgba(201,168,76,.35);
+    }
+
+    /* When envelope is opened → rotate flap back 180° */
+    .envelope-scene.opened .env-flap-wrap {
+      transform: rotateX(180deg);
+    }
+
+    /* ── Letter inside ──────────────────────────────── */
+    .letter-paper {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 340px;
+      background: #fffdf7;
+      border: 1px solid rgba(201,168,76,.2);
+      border-radius: 3px;
+      box-shadow: 0 2px 12px rgba(46,44,42,.1);
+      z-index: 5;
+      padding: 1.8rem 1.6rem 1.6rem;
+      /* Hidden inside envelope by default */
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition:
+        max-height .0s,
+        opacity .0s,
+        transform .0s;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Step 1: letter rises up out of envelope */
+    .envelope-scene.rising .letter-paper {
+      max-height: 600px;
+      opacity: 1;
+      transform: translateX(-50%) translateY(-180px);
+      transition:
+        transform .7s .55s cubic-bezier(.22,.84,.36,1),
+        max-height .01s .54s,
+        opacity .01s .54s;
+    }
+
+    /* Step 2: letter expands fully */
+    .envelope-scene.opened .letter-paper {
+      max-height: 800px;
+      opacity: 1;
+      transform: translateX(-50%) translateY(-180px);
+      transition:
+        transform .7s .55s cubic-bezier(.22,.84,.36,1),
+        max-height .6s 1.1s cubic-bezier(.4,0,.2,1),
+        opacity .01s .54s;
+    }
+
+    /* ── Letter content ─────────────────────────────── */
+    .letter-inner {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .5s 1.5s, transform .5s 1.5s;
+    }
+    .envelope-scene.opened .letter-inner {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .letter-date {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--gold-dark);
+      margin-bottom: 1rem;
+    }
+
+    .letter-salutation {
+      font-family: 'Herr Von Muellerhoff', cursive;
+      font-size: 1.9rem;
+      color: var(--charcoal);
+      margin-bottom: .8rem;
+      line-height: 1.2;
+    }
+
+    .letter-body {
+      font-size: 1rem;
+      line-height: 1.85;
+      color: var(--slate);
+      font-style: italic;
+    }
+    .letter-body p + p { margin-top: .9rem; }
+
+    /* Thin ruled lines behind text — stationery feel */
+    .letter-body {
+      background-image: repeating-linear-gradient(
+        transparent,
+        transparent 28px,
+        rgba(201,168,76,.1) 28px,
+        rgba(201,168,76,.1) 29px
+      );
+      background-position: 0 3px;
+      padding-bottom: 2px;
+    }
+
+    .letter-closing {
+      margin-top: 1.6rem;
+      text-align: right;
+    }
+    .letter-closing p {
+      font-family: 'Herr Von Muellerhoff', cursive;
+      font-size: 1.7rem;
+      color: var(--red);
+      line-height: 1.3;
+    }
+    .letter-closing small {
+      display: block;
+      font-size: .66rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--ash);
+      margin-top: .25rem;
+    }
+
+    /* Gold top rule on letter */
+    .letter-top-rule {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+      margin-bottom: 1.2rem;
+      border-radius: 2px;
+    }
+
+    /* ── Back-to-home button ────────────────────────── */
+    .after-letter {
+      margin-top: 2.4rem;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .5s 2s, transform .5s 2s;
+      text-align: center;
+    }
+    .envelope-scene.opened .after-letter {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Pulse on idle envelope ─────────────────────── */
+    @keyframes env-breathe {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.012); }
+    }
+    .envelope-scene:not(.rising):not(.opened) .envelope {
+      animation: env-breathe 3s ease-in-out infinite;
+    }
+
+    /* ── Hover shimmer on seal ──────────────────────── */
+    .envelope-scene:not(.rising):not(.opened):hover .wax-seal {
+      transform: translateX(-50%) scale(1.12);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="petal-canvas" id="petalCanvas"></div>
+
+  <nav class="site-nav">
+    <a href="index.html" class="nav-brand">To Say Something</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="collage.html">Memories</a></li>
+      <li><a href="messages.html" class="active">Letters</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-wrapper messages-wrap">
+    <div class="envelope-stage">
+
+      <p class="open-hint" id="hint">✦ tap to open ✦</p>
+
+      <!-- ════════════════════════════════════════ -->
+      <!--  ENVELOPE SCENE                          -->
+      <!-- ════════════════════════════════════════ -->
+      <div class="envelope-scene" id="envelopeScene" onclick="openEnvelope()">
+
+        <!-- Letter sits inside, behind the flap -->
+        <div class="letter-paper" id="letterPaper">
+          <div class="letter-top-rule"></div>
+          <div class="letter-inner">
+            <p class="letter-date">Placeholder date &nbsp;·&nbsp; Placeholder place</p>
+            <p class="letter-salutation">Dear [Name],</p>
+            <div class="letter-body">
+              <p>
+                This is a placeholder for the main letter. Replace this with something warm, personal,
+                and full of the things you have been meaning to say.
+              </p>
+              <p>
+                It can be long or short. Funny or tender. It can be about one moment or all of them
+                at once. Write it however it comes out.
+              </p>
+              <p>
+                Add more paragraphs here as needed — just duplicate the &lt;p&gt; tags above.
+              </p>
+            </div>
+            <div class="letter-closing">
+              <p>always yours,<br>[ your name ]</p>
+              <small>✦ with every bit of love ✦</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope body -->
+        <div class="envelope">
+          <div class="env-seam"></div>
+        </div>
+
+        <!-- Flap on top (z above envelope body) -->
+        <div class="env-flap-wrap" id="envFlap">
+          <div class="env-flap"></div>
+        </div>
+
+        <!-- Wax seal over the flap join -->
+        <div class="wax-seal">✦</div>
+
+      </div>
+      <!-- /envelope-scene -->
+
+      <div class="after-letter" id="afterLetter">
+        <a href="index.html" class="btn btn-outline">← Back to Home</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let opened = false;
+
+    function openEnvelope() {
+      if (opened) return;
+      opened = true;
+
+      const scene = document.getElementById('envelopeScene');
+      const hint  = document.getElementById('hint');
+
+      // Hide hint
+      hint.classList.add('hidden');
+
+      // Phase 1: flap opens + letter starts rising
+      scene.classList.add('rising');
+
+      // Phase 2: after flap is open, expand the letter fully
+      setTimeout(() => {
+        scene.classList.add('opened');
+        // Remove onclick so nothing re-fires
+        scene.onclick = null;
+        scene.style.cursor = 'default';
+      }, 700);
+    }
+
+    // ── Petals ───────────────────────────────────────────
+    (function () {
+      const canvas  = document.getElementById('petalCanvas');
+      const symbols = ['✿', '❀', '·', '♡', '✦'];
+      const colors  = ['#c9a84c', '#c0392b', '#b0aba4', '#e8cd87'];
+      function spawn() {
+        const el = document.createElement('span');
+        el.className = 'petal';
+        el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        el.style.left = Math.random() * 96 + '%';
+        el.style.fontSize = (12 + Math.random() * 12) + 'px';
+        el.style.color = colors[Math.floor(Math.random() * colors.length)];
+        const dur = 14 + Math.random() * 10;
+        el.style.setProperty('--drift', ((Math.random() - .5) * 100) + 'px');
+        el.style.setProperty('--spin',  (Math.random() * 360) + 'deg');
+        el.style.animationDuration = dur + 's';
+        canvas.appendChild(el);
+        setTimeout(() => { if (el.parentNode) canvas.removeChild(el); }, dur * 1000);
+      }
+      for (let i = 0; i < 10; i++) setTimeout(spawn, i * 900);
+      setInterval(spawn, 2800);
+    })();
+  </script>
+
+</body>
+</html>

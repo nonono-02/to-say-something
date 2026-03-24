@@ -8,212 +8,118 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400&family=Herr+Von+Muellerhoff&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
-
   <style>
-    /* ── Layout ─────────────────────────────────────── */
-    .messages-wrap {
-      padding-bottom: 5rem;
-    }
 
+    /* ── Stage: full-height centred column ───────────── */
     .envelope-stage {
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: calc(100vh - 80px);
-      padding: 6rem 1.5rem 4rem;
-      position: relative;
+      gap: 1.4rem;
+      padding: 7rem 1.5rem 5rem;
     }
 
-    /* ── Hint label ─────────────────────────────────── */
-    .open-hint {
+    /* ── Hint ────────────────────────────────────────── */
+    #hint {
       font-family: 'Cormorant Garamond', serif;
       font-size: .72rem;
       font-weight: 600;
       letter-spacing: .28em;
       text-transform: uppercase;
       color: var(--gold-dark);
-      margin-bottom: 2rem;
-      opacity: 1;
+      animation: fade-up .7s .5s both;
       transition: opacity .4s;
-      animation: fade-up .7s .4s both;
     }
-    .open-hint.hidden { opacity: 0; pointer-events: none; }
+    #hint.hide { opacity: 0; pointer-events: none; }
 
-    /* ── Envelope shell ─────────────────────────────── */
-    .envelope-scene {
+    /* ── Outer wrapper — sets the coordinate space ───── */
+    #scene {
       position: relative;
-      width: 380px;
+      width: 400px;
+      /* height grows to contain letter once opened */
+      animation: fade-up .8s .15s both;
       cursor: pointer;
-      animation: fade-up .8s .1s both;
-      /* Keep scene tall enough to hold letter peeking above */
-      padding-top: 160px;
     }
 
-    /* The envelope body */
-    .envelope {
-      position: relative;
-      width: 380px;
-      height: 250px;
-      border-radius: 4px 4px 6px 6px;
-      background: linear-gradient(160deg, #fdf6e3 0%, #f5e9cc 100%);
-      border: 1px solid rgba(201,168,76,.45);
-      box-shadow: var(--shadow-md);
-      overflow: visible;
-    }
-
-    /* ── Back fold triangles (bottom-left / bottom-right) ── */
-    .envelope::before,
-    .envelope::after {
-      content: '';
+    /* ── Letter paper ────────────────────────────────── */
+    #letter {
       position: absolute;
+      left: 20px;
+      width: 360px;
+      background: #fffdf7;
+      border: 1px solid rgba(201,168,76,.25);
+      border-radius: 3px;
+      box-shadow: 0 2px 14px rgba(46,44,42,.12);
+      padding: 1.8rem 1.6rem 1.6rem;
+      box-sizing: border-box;
+      overflow: hidden;
+      /* Start: bottom of scene, z below envelope, clipped to 0 height */
       bottom: 0;
-      width: 0;
-      height: 0;
-      z-index: 1;
-    }
-    /* bottom-left triangle */
-    .envelope::before {
-      left: 0;
-      border-style: solid;
-      border-width: 0 0 125px 190px;
-      border-color: transparent transparent rgba(224,209,172,.9) transparent;
-    }
-    /* bottom-right triangle */
-    .envelope::after {
-      right: 0;
-      border-style: solid;
-      border-width: 125px 0 0 190px;
-      border-color: transparent transparent transparent rgba(214,198,158,.85);
-    }
-
-    /* Bottom-center diamond seam */
-    .env-seam {
-      position: absolute;
-      bottom: 0; left: 50%;
-      transform: translateX(-50%);
-      width: 1px; height: 125px;
-      background: rgba(201,168,76,.25);
-      z-index: 2;
-    }
-
-    /* ── Wax seal ───────────────────────────────────── */
-    .wax-seal {
-      position: absolute;
-      bottom: -18px; left: 50%;
-      transform: translateX(-50%);
-      width: 46px; height: 46px;
-      background: radial-gradient(circle at 38% 36%, #e05555, var(--red) 55%, #8b1a1a);
-      border-radius: 50%;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 3px 10px rgba(192,57,43,.4), inset 0 1px 3px rgba(255,255,255,.2);
-      transition: transform .3s, opacity .5s;
-      font-size: .85rem;
-      color: rgba(255,255,255,.85);
-      font-family: 'Herr Von Muellerhoff', cursive;
-      line-height: 1;
-    }
-    .envelope-scene.opened .wax-seal {
+      max-height: 0;
       opacity: 0;
-      transform: translateX(-50%) scale(.6);
+      z-index: 2;
+      transition: none;
+    }
+
+    /* ── Envelope body SVG ───────────────────────────── */
+    #env-svg {
+      position: relative;
+      display: block;
+      width: 400px;
+      z-index: 3;
+      filter: drop-shadow(0 6px 18px rgba(46,44,42,.14));
+    }
+
+    /* ── Flap SVG (separate, rotates open) ───────────── */
+    #flap-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 400px;
+      z-index: 10;
+      transform-origin: top center;
+      transform-style: preserve-3d;
+      transition: transform .7s cubic-bezier(.4,0,.2,1);
       pointer-events: none;
     }
 
-    /* ── Flap ───────────────────────────────────────── */
-    .env-flap-wrap {
+    /* ── Wax seal ────────────────────────────────────── */
+    #seal {
       position: absolute;
-      top: 0; left: 0;
-      width: 380px;
-      height: 130px; /* half-ish */
-      overflow: visible;
-      transform-origin: top center;
-      transform-style: preserve-3d;
-      transition: transform .65s cubic-bezier(.4,0,.2,1);
-      z-index: 20;
-    }
-
-    .env-flap {
-      width: 0;
-      height: 0;
-      border-style: solid;
-      /* Triangle pointing down — forms the flap */
-      border-width: 130px 190px 0 190px;
-      border-color: rgba(245,233,201,.95) transparent transparent transparent;
-      filter: drop-shadow(0 2px 4px rgba(107,93,79,.12));
-    }
-
-    /* Flap inner shadow line */
-    .env-flap::after {
-      content: '';
-      position: absolute;
-      top: -128px; left: -188px;
-      width: 376px; height: 1px;
-      background: rgba(201,168,76,.35);
-    }
-
-    /* When envelope is opened → rotate flap back 180° */
-    .envelope-scene.opened .env-flap-wrap {
-      transform: rotateX(180deg);
-    }
-
-    /* ── Letter inside ──────────────────────────────── */
-    .letter-paper {
-      position: absolute;
-      bottom: 8px;
+      top: calc(50% + 4px);   /* sits on the flap fold line */
       left: 50%;
-      transform: translateX(-50%);
-      width: 340px;
-      background: #fffdf7;
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 3px;
-      box-shadow: 0 2px 12px rgba(46,44,42,.1);
-      z-index: 5;
-      padding: 1.8rem 1.6rem 1.6rem;
-      /* Hidden inside envelope by default */
-      max-height: 0;
-      overflow: hidden;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      background: radial-gradient(circle at 38% 36%, #e05555, #c0392b 55%, #7a1515);
+      border-radius: 50%;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 10px rgba(192,57,43,.45), inset 0 1px 3px rgba(255,255,255,.2);
+      font-size: .9rem;
+      color: rgba(255,255,255,.88);
+      font-family: 'Herr Von Muellerhoff', cursive;
+      line-height: 1;
+      transition: opacity .4s, transform .4s;
+    }
+
+    /* ── Letter content ──────────────────────────────── */
+    .letter-top-rule {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+      border-radius: 2px;
+      margin-bottom: 1.1rem;
+    }
+
+    #letter-inner {
       opacity: 0;
-      transition:
-        max-height .0s,
-        opacity .0s,
-        transform .0s;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    /* Step 1: letter rises up out of envelope */
-    .envelope-scene.rising .letter-paper {
-      max-height: 600px;
-      opacity: 1;
-      transform: translateX(-50%) translateY(-180px);
-      transition:
-        transform .7s .55s cubic-bezier(.22,.84,.36,1),
-        max-height .01s .54s,
-        opacity .01s .54s;
-    }
-
-    /* Step 2: letter expands fully */
-    .envelope-scene.opened .letter-paper {
-      max-height: 800px;
-      opacity: 1;
-      transform: translateX(-50%) translateY(-180px);
-      transition:
-        transform .7s .55s cubic-bezier(.22,.84,.36,1),
-        max-height .6s 1.1s cubic-bezier(.4,0,.2,1),
-        opacity .01s .54s;
-    }
-
-    /* ── Letter content ─────────────────────────────── */
-    .letter-inner {
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity .5s 1.5s, transform .5s 1.5s;
-    }
-    .envelope-scene.opened .letter-inner {
-      opacity: 1;
-      transform: translateY(0);
+      transform: translateY(6px);
+      transition: opacity .5s, transform .5s;
     }
 
     .letter-date {
@@ -223,14 +129,14 @@
       letter-spacing: .22em;
       text-transform: uppercase;
       color: var(--gold-dark);
-      margin-bottom: 1rem;
+      margin-bottom: .9rem;
     }
 
     .letter-salutation {
       font-family: 'Herr Von Muellerhoff', cursive;
-      font-size: 1.9rem;
+      font-size: 2rem;
       color: var(--charcoal);
-      margin-bottom: .8rem;
+      margin-bottom: .7rem;
       line-height: 1.2;
     }
 
@@ -239,28 +145,22 @@
       line-height: 1.85;
       color: var(--slate);
       font-style: italic;
-    }
-    .letter-body p + p { margin-top: .9rem; }
-
-    /* Thin ruled lines behind text — stationery feel */
-    .letter-body {
       background-image: repeating-linear-gradient(
-        transparent,
-        transparent 28px,
-        rgba(201,168,76,.1) 28px,
-        rgba(201,168,76,.1) 29px
+        transparent, transparent 28px,
+        rgba(201,168,76,.1) 28px, rgba(201,168,76,.1) 29px
       );
-      background-position: 0 3px;
-      padding-bottom: 2px;
+      background-position: 0 4px;
+      padding-bottom: 4px;
     }
+    .letter-body p + p { margin-top: .85rem; }
 
     .letter-closing {
-      margin-top: 1.6rem;
+      margin-top: 1.5rem;
       text-align: right;
     }
     .letter-closing p {
       font-family: 'Herr Von Muellerhoff', cursive;
-      font-size: 1.7rem;
+      font-size: 1.75rem;
       color: var(--red);
       line-height: 1.3;
     }
@@ -273,40 +173,31 @@
       margin-top: .25rem;
     }
 
-    /* Gold top rule on letter */
-    .letter-top-rule {
-      width: 100%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
-      margin-bottom: 1.2rem;
-      border-radius: 2px;
-    }
-
-    /* ── Back-to-home button ────────────────────────── */
-    .after-letter {
-      margin-top: 2.4rem;
+    /* ── Back button ─────────────────────────────────── */
+    #back-btn {
       opacity: 0;
-      transform: translateY(10px);
-      transition: opacity .5s 2s, transform .5s 2s;
-      text-align: center;
+      transform: translateY(8px);
+      transition: opacity .5s, transform .5s;
+      pointer-events: none;
     }
-    .envelope-scene.opened .after-letter {
+    #back-btn.show {
       opacity: 1;
       transform: translateY(0);
+      pointer-events: auto;
     }
 
-    /* ── Pulse on idle envelope ─────────────────────── */
+    /* ── Idle breathe ────────────────────────────────── */
     @keyframes env-breathe {
       0%, 100% { transform: scale(1); }
-      50%       { transform: scale(1.012); }
+      50%       { transform: scale(1.013); }
     }
-    .envelope-scene:not(.rising):not(.opened) .envelope {
-      animation: env-breathe 3s ease-in-out infinite;
-    }
+    #scene.idle #env-svg { animation: env-breathe 3s ease-in-out infinite; }
+    #scene.idle:hover #seal { transform: translate(-50%, -50%) scale(1.12); }
 
-    /* ── Hover shimmer on seal ──────────────────────── */
-    .envelope-scene:not(.rising):not(.opened):hover .wax-seal {
-      transform: translateX(-50%) scale(1.12);
+    /* responsive */
+    @media (max-width: 480px) {
+      #scene, #env-svg, #flap-svg { width: 310px; }
+      #letter { left: 15px; width: 280px; }
     }
   </style>
 </head>
@@ -323,59 +214,74 @@
     </ul>
   </nav>
 
-  <div class="page-wrapper messages-wrap">
+  <div class="page-wrapper">
     <div class="envelope-stage">
 
-      <p class="open-hint" id="hint">✦ tap to open ✦</p>
+      <p id="hint">✦ tap to open ✦</p>
 
-      <!-- ════════════════════════════════════════ -->
-      <!--  ENVELOPE SCENE                          -->
-      <!-- ════════════════════════════════════════ -->
-      <div class="envelope-scene" id="envelopeScene" onclick="openEnvelope()">
+      <!-- ══════════════════════════════════════════════ -->
+      <!--  SCENE                                         -->
+      <!-- ══════════════════════════════════════════════ -->
+      <div id="scene" class="idle" onclick="openEnvelope()">
 
-        <!-- Letter sits inside, behind the flap -->
-        <div class="letter-paper" id="letterPaper">
+        <!-- 1. Letter paper — lives BEHIND envelope in z -->
+        <div id="letter">
           <div class="letter-top-rule"></div>
-          <div class="letter-inner">
+          <div id="letter-inner">
             <p class="letter-date">Placeholder date &nbsp;·&nbsp; Placeholder place</p>
             <p class="letter-salutation">Dear [Name],</p>
             <div class="letter-body">
-              <p>
-                This is a placeholder for the main letter. Replace this with something warm, personal,
-                and full of the things you have been meaning to say.
-              </p>
-              <p>
-                It can be long or short. Funny or tender. It can be about one moment or all of them
-                at once. Write it however it comes out.
-              </p>
-              <p>
-                Add more paragraphs here as needed — just duplicate the &lt;p&gt; tags above.
-              </p>
+              <p>This is a placeholder for the main letter..</p>
             </div>
             <div class="letter-closing">
               <p>always yours,<br>[ your name ]</p>
-              <small>✦ with every bit of love ✦</small>
             </div>
           </div>
         </div>
 
-        <!-- Envelope body -->
-        <div class="envelope">
-          <div class="env-seam"></div>
-        </div>
+        <!-- 2. Envelope body (SVG, drawn over the letter) -->
+        <svg id="env-svg" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+          <!-- Main body rectangle -->
+          <rect x="0" y="0" width="400" height="250" rx="4" fill="url(#envGrad)" stroke="rgba(201,168,76,0.45)" stroke-width="1"/>
+          <!-- Left interior fold -->
+          <polygon points="0,0 0,250 200,145" fill="rgba(220,204,166,0.75)"/>
+          <!-- Right interior fold -->
+          <polygon points="400,0 400,250 200,145" fill="rgba(205,188,148,0.70)"/>
+          <!-- Bottom point fold -->
+          <polygon points="0,250 400,250 200,145" fill="rgba(230,215,178,0.85)"/>
+          <!-- Seam lines -->
+          <line x1="0" y1="0" x2="200" y2="145" stroke="rgba(201,168,76,0.22)" stroke-width="1"/>
+          <line x1="400" y1="0" x2="200" y2="145" stroke="rgba(201,168,76,0.22)" stroke-width="1"/>
+          <defs>
+            <linearGradient id="envGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fdf6e3"/>
+              <stop offset="100%" stop-color="#f0e2c0"/>
+            </linearGradient>
+          </defs>
+        </svg>
 
-        <!-- Flap on top (z above envelope body) -->
-        <div class="env-flap-wrap" id="envFlap">
-          <div class="env-flap"></div>
-        </div>
+        <!-- 3. Flap (separate SVG, rotates open around top edge) -->
+        <svg id="flap-svg" viewBox="0 0 400 145" xmlns="http://www.w3.org/2000/svg">
+          <!-- Flap triangle (points downward — V shape from top corners to centre bottom) -->
+          <polygon points="0,0 400,0 200,145" fill="url(#flapGrad)" stroke="rgba(201,168,76,0.4)" stroke-width="1" stroke-linejoin="round"/>
+          <!-- Subtle crease line at fold -->
+          <line x1="0" y1="0" x2="400" y2="0" stroke="rgba(201,168,76,0.35)" stroke-width="1"/>
+          <defs>
+            <linearGradient id="flapGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fdf6e3"/>
+              <stop offset="100%" stop-color="#ecddb8"/>
+            </linearGradient>
+          </defs>
+        </svg>
 
-        <!-- Wax seal over the flap join -->
-        <div class="wax-seal">✦</div>
+        <!-- 4. Wax seal centred on the flap fold line -->
+        <div id="seal">✦</div>
 
       </div>
-      <!-- /envelope-scene -->
+      <!-- /scene -->
 
-      <div class="after-letter" id="afterLetter">
+      <!-- Back button — outside scene, shown by JS -->
+      <div id="back-btn">
         <a href="index.html" class="btn btn-outline">← Back to Home</a>
       </div>
 
@@ -383,31 +289,63 @@
   </div>
 
   <script>
-    let opened = false;
+    let hasOpened = false;
 
     function openEnvelope() {
-      if (opened) return;
-      opened = true;
+      if (hasOpened) return;
+      hasOpened = true;
 
-      const scene = document.getElementById('envelopeScene');
-      const hint  = document.getElementById('hint');
+      const scene  = document.getElementById('scene');
+      const hint   = document.getElementById('hint');
+      const flap   = document.getElementById('flap-svg');
+      const seal   = document.getElementById('seal');
+      const letter = document.getElementById('letter');
+      const inner  = document.getElementById('letter-inner');
+      const back   = document.getElementById('back-btn');
 
-      // Hide hint
-      hint.classList.add('hidden');
+      scene.classList.remove('idle');
+      scene.onclick = null;
+      scene.style.cursor = 'default';
+      hint.classList.add('hide');
 
-      // Phase 1: flap opens + letter starts rising
-      scene.classList.add('rising');
+      /* ── Step 1 (0ms): flap opens + seal fades ─── */
+      flap.style.transition = 'transform .7s cubic-bezier(.4,0,.2,1)';
+      flap.style.transform  = 'rotateX(180deg)';
+      seal.style.opacity    = '0';
+      seal.style.transform  = 'translate(-50%, -50%) scale(.5)';
 
-      // Phase 2: after flap is open, expand the letter fully
+      /* ── Step 2 (550ms): letter becomes visible and rises ── */
       setTimeout(() => {
-        scene.classList.add('opened');
-        // Remove onclick so nothing re-fires
-        scene.onclick = null;
-        scene.style.cursor = 'default';
-      }, 700);
+        /* Reveal letter at current position (inside env), no animation yet */
+        letter.style.transition = 'none';
+        letter.style.maxHeight  = '600px';
+        letter.style.opacity    = '1';
+
+        /* Force reflow so the browser registers the height before animating */
+        letter.getBoundingClientRect();
+
+        /* Now animate the rise */
+        letter.style.transition = 'transform .65s cubic-bezier(.22,.84,.36,1), bottom .65s cubic-bezier(.22,.84,.36,1)';
+        letter.style.bottom     = '220px';
+      }, 550);
+
+      /* ── Step 3 (1200ms): letter expands to full height ─── */
+      setTimeout(() => {
+        letter.style.transition = 'max-height .55s cubic-bezier(.4,0,.2,1), transform .65s, bottom .65s';
+        /* max-height already 600px, no change needed — content just becomes readable */
+
+        /* Fade in the letter content */
+        inner.style.opacity   = '1';
+        inner.style.transform = 'translateY(0)';
+      }, 1200);
+
+      /* ── Step 4 (2000ms): show back button ─────────────── */
+      setTimeout(() => {
+        back.classList.add('show');
+      }, 2000);
     }
 
-    // ── Petals ───────────────────────────────────────────
+    /* ── Petals ─────────────────────────────────────────── */
     (function () {
       const canvas  = document.getElementById('petalCanvas');
       const symbols = ['✿', '❀', '·', '♡', '✦'];
@@ -421,7 +359,7 @@
         el.style.color = colors[Math.floor(Math.random() * colors.length)];
         const dur = 14 + Math.random() * 10;
         el.style.setProperty('--drift', ((Math.random() - .5) * 100) + 'px');
-        el.style.setProperty('--spin',  (Math.random() * 360) + 'deg');
+        el.style.setProperty('--spin', (Math.random() * 360) + 'deg');
         el.style.animationDuration = dur + 's';
         canvas.appendChild(el);
         setTimeout(() => { if (el.parentNode) canvas.removeChild(el); }, dur * 1000);
